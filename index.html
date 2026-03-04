@@ -242,7 +242,7 @@ function renderUpcoming(sessions) {
     const isFeatured = s.is_featured || i === 0;
     const border = isFeatured ? 'border:1.5px solid var(--green);box-shadow:0 4px 16px rgba(44,226,122,.1);' : 'border:1.5px solid var(--border);';
     const headerBg = isFeatured ? 'background:linear-gradient(120deg,#000000,#0a2a0a);' : 'background:#000000;';
-    const liveBg = isFeatured ? 'background:#F96A19;color:#fff;' : 'background:#F96A19;color:#fff;';
+    const liveBg = isFeatured ? 'background:#09BB1B;color:#fff;' : 'background:#09BB1B;color:#fff;';
     const btnClass = isFeatured ? 'btn-green' : 'btn-primary';
     return `
       <div class="session-card" style="${border}">
