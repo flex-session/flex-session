@@ -431,8 +431,21 @@ function openPastModal(sessionId) {
       <span style="color:var(--green);font-weight:700;flex-shrink:0;">▶</span>${c}
     </div>`).join('') : '';
 
-  const videoArea = s.recording_url
-    ? `<iframe src="${s.recording_url}" style="width:100%;aspect-ratio:16/9;border:none;border-radius:12px;" allowfullscreen></iframe>`
+  // 유튜브 URL 자동 embed 변환
+  function toEmbedUrl(url) {
+    if (!url) return '';
+    // watch?v= 형식
+    const watchMatch = url.match(/youtube\.com\/watch\?v=([^&]+)/);
+    if (watchMatch) return `https://www.youtube.com/embed/${watchMatch[1]}`;
+    // youtu.be 단축 형식
+    const shortMatch = url.match(/youtu\.be\/([^?]+)/);
+    if (shortMatch) return `https://www.youtube.com/embed/${shortMatch[1]}`;
+    // 이미 embed 형식이면 그대로
+    return url;
+  }
+  const embedUrl = toEmbedUrl(s.recording_url);
+  const videoArea = embedUrl
+    ? `<iframe src="${embedUrl}" style="width:100%;aspect-ratio:16/9;border:none;border-radius:12px;" allowfullscreen allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"></iframe>`
     : `<div style="background:#0d0d1a;border-radius:12px;aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;">
         <div style="position:absolute;inset:0;background:linear-gradient(135deg,#0d0d1a,#0d2a18);"></div>
         <div style="position:relative;z-index:1;text-align:center;">
