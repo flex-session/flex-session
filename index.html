@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>세션 — flex</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:'Apple SD Gothic Neo','Noto Sans KR',sans-serif; font-size:14px; color:#111; background:#f5f5f7; min-height:100vh; }
+:root { --black:#0D0D1A; --green:#2CE27A; --green-light:#E8FFF3; --gray:#F5F5F7; --border:#E0E0E0; --sub:#6B6B7B; }
+
+/* ── 공통 버튼 ── */
+.btn { padding:11px 22px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; border:none; transition:all .15s; white-space:nowrap; display:inline-block; }
+.btn-primary { background:var(--black); color:#fff; }
+.btn-primary:hover { background:#222; }
+.btn-secondary { background:#fff; color:var(--black); border:1px solid var(--border); }
+.btn-secondary:hover { border-color:#999; }
+.btn-green { background:var(--green); color:var(--black); }
+.btn-green:hover { background:#1fd068; }
+
+/* ── 레이아웃 ── */
+.page-wrap { max-width:800px; margin:0 auto; padding:48px 24px 80px; }
+
+/* ── 페이지 히어로 ── */
+.page-hero { background:linear-gradient(120deg,var(--black) 0%,#0d2010 100%); border-radius:16px; padding:36px 40px; margin-bottom:36px; position:relative; overflow:hidden; }
+.page-hero::before { content:''; position:absolute; top:-50px; right:-50px; width:220px; height:220px; background:var(--green); border-radius:50%; opacity:.07; }
+.page-hero .htag { display:inline-block; padding:4px 10px; background:var(--green); color:var(--black); border-radius:6px; font-size:11px; font-weight:700; margin-bottom:14px; }
+.page-hero h1 { font-size:24px; font-weight:800; color:#fff; margin-bottom:8px; letter-spacing:-.02em; line-height:1.35; }
+.page-hero p { font-size:14px; color:rgba(255,255,255,.5); line-height:1.7; }
+
+/* ── 탭 ── */
+.tab-bar { display:flex; gap:0; border-bottom:2px solid var(--border); margin-bottom:28px; background:#fff; border-radius:12px 12px 0 0; padding:0 4px; }
+.tab-btn { padding:14px 20px; font-size:13px; font-weight:500; color:var(--sub); background:none; border:none; border-bottom:2px solid transparent; margin-bottom:-2px; cursor:pointer; transition:all .15s; }
+.tab-btn.on { font-weight:700; color:var(--black); border-bottom-color:var(--green); }
+
+/* ── 세션 카드 공통 ── */
+.session-card { background:#fff; border-radius:14px; overflow:hidden; margin-bottom:16px; }
+.session-card-header { padding:16px 24px; display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+.session-card-body { padding:22px 24px; }
+.session-tag { font-size:11px; font-weight:700; color:var(--green); text-transform:uppercase; letter-spacing:.06em; margin-bottom:8px; }
+.session-title { font-size:16px; font-weight:800; color:var(--black); margin-bottom:8px; letter-spacing:-.02em; }
+.session-desc { font-size:13px; color:var(--sub); line-height:1.7; margin-bottom:16px; }
+.session-meta { display:flex; gap:16px; flex-wrap:wrap; margin-bottom:18px; }
+.session-meta span { font-size:12px; color:#555; display:flex; align-items:center; gap:5px; }
+
+/* ── 지난 세션 행 ── */
+.past-row { background:#fff; border:1.5px solid var(--border); border-radius:12px; padding:18px 22px; display:flex; align-items:center; gap:16px; cursor:pointer; transition:border-color .15s, box-shadow .15s; margin-bottom:12px; }
+.past-row:hover { border-color:var(--green); box-shadow:0 4px 16px rgba(44,226,122,.1); }
+.past-thumb { width:52px; height:52px; background:var(--gray); border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:22px; flex-shrink:0; }
+.past-info { flex:1; min-width:0; }
+.past-meta { font-size:11px; font-weight:700; color:var(--sub); margin-bottom:4px; }
+.past-title { font-size:14px; font-weight:700; color:var(--black); margin-bottom:4px; }
+.past-detail { display:flex; gap:12px; flex-wrap:wrap; }
+.past-detail span { font-size:11px; color:var(--sub); }
+
+/* ── 로딩/빈 상태 ── */
+.state-msg { text-align:center; padding:48px 0; color:var(--sub); font-size:13px; }
+
+/* ── 모달 ── */
+.modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:500; align-items:center; justify-content:center; padding:20px; }
+.modal-overlay.open { display:flex; }
+.modal { background:#fff; border-radius:16px; padding:36px; max-width:480px; width:100%; box-shadow:0 24px 64px rgba(0,0,0,.18); max-height:90vh; overflow-y:auto; }
+.modal-close { display:block; text-align:center; font-size:12px; color:var(--sub); cursor:pointer; margin-top:20px; }
+
+/* 지난 세션 모달 */
+.past-modal-wrap { background:#fff; border-radius:18px; width:100%; max-width:680px; box-shadow:0 24px 64px rgba(0,0,0,.15); overflow:hidden; max-height:88vh; display:flex; flex-direction:column; }
+.past-modal-body { overflow-y:auto; flex:1; }
+.past-modal-footer { padding:16px 28px; border-top:1px solid var(--border); background:#fafafa; text-align:right; flex-shrink:0; }
+
+/* ── 필터 칩 ── */
+.filter-bar { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:20px; }
+.filter-chip { padding:6px 14px; border-radius:20px; font-size:12px; font-weight:600; cursor:pointer; border:1.5px solid var(--border); background:#fff; color:#555; transition:all .15s; white-space:nowrap; }
+.filter-chip:hover { border-color:var(--green); color:#0a7a3e; }
+.filter-chip.on { background:var(--green); border-color:var(--green); color:var(--black); }
+
+/* ── 반응형 ── */
+@media(max-width:600px) {
+  .page-wrap { padding:24px 16px 60px; }
+  .page-hero { padding:28px 24px; }
+  .page-hero h1 { font-size:20px; }
+  .session-meta { gap:10px; }
+}
+</style>
+</head>
+<body>
+
+<div class="page-wrap">
+
+  <!-- 히어로 -->
+  <div class="page-hero">
+    <div class="htag">세션</div>
+    <h1>실무로 배우는 flex 활용법</h1>
+    <p>플렉스 실무 담당자가 직접 진행하는 온라인 교육 세션입니다.<br>예정된 세션을 신청하거나, 지난 세션의 녹화 영상을 다시 볼 수 있습니다.</p>
+  </div>
+
+  <!-- 탭 -->
+  <div class="tab-bar" id="tab-bar">
+    <button class="tab-btn on" id="tab-upcoming" onclick="switchTab('upcoming')">예정 세션</button>
+    <button class="tab-btn" id="tab-past" onclick="switchTab('past')">지난 세션</button>
+  </div>
+
+  <!-- 예정 세션 -->
+  <div id="panel-upcoming">
+    <div id="filter-upcoming" class="filter-bar"></div>
+    <div id="upcoming-list">
+      <div class="state-msg">세션 정보를 불러오는 중...</div>
+    </div>
+  </div>
+
+  <!-- 지난 세션 -->
+  <div id="panel-past" style="display:none;">
+    <div id="filter-past" class="filter-bar"></div>
+    <div id="past-list">
+      <div class="state-msg">세션 정보를 불러오는 중...</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- 세션 신청 모달 -->
+<div class="modal-overlay" id="applyModal" onclick="closeApplyModal(event)">
+  <div class="modal">
+    <div id="applyModalContent"></div>
+    <span class="modal-close" onclick="document.getElementById('applyModal').classList.remove('open')">닫기</span>
+  </div>
+</div>
+
+<!-- 지난 세션 모달 -->
+<div class="modal-overlay" id="pastModal" onclick="closePastModal(event)" style="align-items:flex-start; padding-top:48px;">
+  <div class="past-modal-wrap">
+    <div class="past-modal-body" id="pastModalContent"></div>
+    <div class="past-modal-footer">
+      <button onclick="document.getElementById('pastModal').classList.remove('open')" class="btn btn-secondary" style="font-size:12px;padding:8px 18px;">닫기</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Supabase 설정 ──
+const SUPABASE_URL = 'https://puttdfnfkgsdeyuenppj.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_noVtH6mT-n3dCFEUOZyAQw_JGrcI4WF';
+
+async function supabaseFetch(path, options = {}) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+    headers: {
+      'apikey': SUPABASE_KEY,
+      'Authorization': `Bearer ${SUPABASE_KEY}`,
+      'Content-Type': 'application/json',
+      'Prefer': 'return=representation',
+      ...options.headers
+    },
+    ...options
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+// ── 날짜 유틸 ──
+function formatDate(dateStr) {
+  const d = new Date(dateStr);
+  const days = ['일','월','화','수','목','금','토'];
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth()+1).padStart(2,'0');
+  const dd = String(d.getDate()).padStart(2,'0');
+  const day = days[d.getDay()];
+  const hh = String(d.getHours()).padStart(2,'0');
+  const min = String(d.getMinutes()).padStart(2,'0');
+  return `${yyyy}.${mm}.${dd} (${day}) ${hh}:${min}`;
+}
+
+function formatDateShort(dateStr) {
+  const d = new Date(dateStr);
+  return `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function formatDateWithTbd(dateStr, timeTbd) {
+  const d = new Date(dateStr);
+  const days = ['일','월','화','수','목','금','토'];
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth()+1).padStart(2,'0');
+  const dd = String(d.getDate()).padStart(2,'0');
+  const day = days[d.getDay()];
+  if (timeTbd) return `${yyyy}.${mm}.${dd} (${day}) 시간 미정`;
+  const hh = String(d.getHours()).padStart(2,'0');
+  const min = String(d.getMinutes()).padStart(2,'0');
+  return `${yyyy}.${mm}.${dd} (${day}) ${hh}:${min}`;
+}
+
+function calcDday(dateStr) {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const target = new Date(dateStr); target.setHours(0,0,0,0);
+  const diff = Math.round((target - today) / (1000*60*60*24));
+  return diff === 0 ? 'D-DAY' : `D-${diff}`;
+}
+
+// ── 세션 캐시 ──
+let sessionCache = [];
+let currentSessionId = null;
+let activeFilterUpcoming = '전체';
+let activeFilterPast = '전체';
+
+// ── 데이터 로드 ──
+async function loadSessions() {
+  try {
+    const data = await supabaseFetch('sessions?select=*&order=session_date.asc');
+    sessionCache = data;
+    const now = new Date();
+    const upcoming = data.filter(s => new Date(s.session_date) >= now);
+    const past = data.filter(s => new Date(s.session_date) < now);
+    // 지난 세션 없으면 탭 숨기기
+    const tabBar = document.getElementById('tab-bar');
+    if (past.length === 0) {
+      tabBar.style.display = 'none';
+    } else {
+      tabBar.style.display = 'flex';
+    }
+    renderFilterBar('filter-upcoming', upcoming, 'upcoming');
+    renderFilterBar('filter-past', past, 'past');
+    renderUpcoming(upcoming);
+    renderPast(past);
+  } catch(e) {
+    document.getElementById('upcoming-list').innerHTML = '<div class="state-msg" style="color:#e53e3e;">세션 정보를 불러오지 못했습니다.</div>';
+    document.getElementById('past-list').innerHTML = '<div class="state-msg" style="color:#e53e3e;">세션 정보를 불러오지 못했습니다.</div>';
+  }
+}
+
+// ── 예정 세션 렌더링 ──
+function renderUpcoming(sessions) {
+  const el = document.getElementById('upcoming-list');
+  if (!sessions.length) {
+    el.innerHTML = '<div class="state-msg">예정된 세션이 없습니다.</div>';
+    return;
+  }
+  // 필터 적용
+  const filtered = activeFilterUpcoming === '전체' ? sessions : sessions.filter(s => s.tag === activeFilterUpcoming);
+  if (!filtered.length) {
+    el.innerHTML = '<div class="state-msg">해당 카테고리의 예정 세션이 없습니다.</div>';
+    return;
+  }
+  el.innerHTML = filtered.map((s, i) => {
+    const isFeatured = s.is_featured || i === 0;
+    const border = isFeatured ? 'border:1.5px solid var(--green);box-shadow:0 4px 16px rgba(44,226,122,.1);' : 'border:1.5px solid var(--border);';
+    const headerBg = isFeatured ? 'background:linear-gradient(120deg,var(--black),#0d2a18);' : 'background:var(--black);';
+    const liveBg = isFeatured ? 'background:var(--green);color:var(--black);' : 'background:rgba(255,255,255,.1);color:rgba(255,255,255,.7);';
+    const btnClass = isFeatured ? 'btn-green' : 'btn-primary';
+    return `
+      <div class="session-card" style="${border}">
+        <div class="session-card-header" style="${headerBg}">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span style="padding:3px 10px;${liveBg}border-radius:5px;font-size:11px;font-weight:700;">LIVE 예정</span>
+            <span style="font-size:11px;color:rgba(255,255,255,.5);">${calcDday(s.session_date)}</span>
+          </div>
+        </div>
+        <div class="session-card-body">
+          <div class="session-tag">${s.tag||''}</div>
+          <div class="session-title">${s.title}</div>
+          ${s.description ? `<div class="session-desc">${s.description}</div>` : ''}
+          <div class="session-meta">
+            <span>📅 ${formatDateWithTbd(s.session_date, s.time_tbd)}</span>
+            <span>⏱ ${s.duration||''}</span>
+            ${s.location ? `<span>💻 ${s.location}</span>` : ''}
+          </div>
+          <button onclick="openApplyModal(${s.id})" class="btn ${btnClass}" style="font-size:13px;">세션 신청하기 →</button>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// ── 지난 세션 렌더링 ──
+function renderPast(sessions) {
+  const el = document.getElementById('past-list');
+  if (!sessions.length) {
+    el.innerHTML = '<div class="state-msg">지난 세션이 없습니다.</div>';
+    return;
+  }
+  const sorted = [...sessions].sort((a,b) => new Date(b.session_date) - new Date(a.session_date));
+  const filteredPast = activeFilterPast === '전체' ? sorted : sorted.filter(s => s.tag === activeFilterPast);
+  if (!filteredPast.length) {
+    el.innerHTML = '<div class="state-msg">해당 카테고리의 지난 세션이 없습니다.</div>';
+    return;
+  }
+  el.innerHTML = filteredPast.map(s => `
+    <div class="past-row" onclick="openPastModal(${s.id})">
+      <div class="past-thumb">🎬</div>
+      <div class="past-info">
+        <div class="past-meta">${s.tag||''} · ${formatDateShort(s.session_date)}</div>
+        <div class="past-title">${s.title}</div>
+        <div class="past-detail">
+          <span>⏱ ${s.duration||''}</span>
+        </div>
+      </div>
+      <span style="font-size:18px;color:#ccc;flex-shrink:0;">›</span>
+    </div>`).join('');
+}
+
+// ── 필터바 렌더링 ──
+function renderFilterBar(elId, sessions, type) {
+  const tags = ['전체', ...new Set(sessions.map(s => s.tag).filter(Boolean))];
+  if (tags.length <= 2) { // 전체 포함 2개 이하면 필터 불필요
+    document.getElementById(elId).innerHTML = '';
+    return;
+  }
+  document.getElementById(elId).innerHTML = tags.map(tag => `
+    <span class="filter-chip ${tag === '전체' ? 'on' : ''}" onclick="setFilter('${type}', '${tag}')">${tag}</span>
+  `).join('');
+}
+
+function setFilter(type, tag) {
+  if (type === 'upcoming') {
+    activeFilterUpcoming = tag;
+    document.querySelectorAll('#filter-upcoming .filter-chip').forEach(el => {
+      el.classList.toggle('on', el.textContent.trim() === tag);
+    });
+    const now = new Date();
+    renderUpcoming(sessionCache.filter(s => new Date(s.session_date) >= now));
+  } else {
+    activeFilterPast = tag;
+    document.querySelectorAll('#filter-past .filter-chip').forEach(el => {
+      el.classList.toggle('on', el.textContent.trim() === tag);
+    });
+    renderPast(sessionCache.filter(s => new Date(s.session_date) < new Date()));
+  }
+}
+
+// ── 탭 전환 ──
+function switchTab(tab) {
+  document.getElementById('panel-upcoming').style.display = tab === 'upcoming' ? 'block' : 'none';
+  document.getElementById('panel-past').style.display = tab === 'past' ? 'block' : 'none';
+  document.getElementById('tab-upcoming').classList.toggle('on', tab === 'upcoming');
+  document.getElementById('tab-past').classList.toggle('on', tab === 'past');
+}
+
+// ── 세션 신청 모달 ──
+function openApplyModal(sessionId) {
+  const s = sessionCache.find(x => x.id === sessionId);
+  if (!s) return;
+  currentSessionId = sessionId;
+
+  document.getElementById('applyModalContent').innerHTML = `
+    <div style="font-size:11px;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;">${s.tag||''}</div>
+    <h3 style="font-size:16px;font-weight:800;color:var(--black);margin-bottom:16px;line-height:1.4;">${s.title}</h3>
+    <div style="background:var(--gray);border-radius:10px;padding:16px;margin-bottom:20px;display:flex;flex-direction:column;gap:8px;">
+      <div style="display:flex;justify-content:space-between;font-size:13px;"><span style="color:var(--sub);">일시</span><span style="font-weight:600;">${formatDateWithTbd(s.session_date, s.time_tbd)}</span></div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;"><span style="color:var(--sub);">소요 시간</span><span style="font-weight:600;">${s.duration||''}</span></div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;"><span style="color:var(--sub);">방식</span><span style="font-weight:600;">${s.location||''}</span></div>
+
+    </div>
+    <div style="margin-bottom:16px;">
+      <label style="font-size:12px;font-weight:700;color:var(--black);display:block;margin-bottom:6px;">회사명</label>
+      <input id="apply-company" type="text" placeholder="(주)플렉스" style="width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:8px;font-size:13px;outline:none;">
+    </div>
+    <div style="margin-bottom:16px;">
+      <label style="font-size:12px;font-weight:700;color:var(--black);display:block;margin-bottom:6px;">성함</label>
+      <input id="apply-name" type="text" placeholder="홍길동" style="width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:8px;font-size:13px;outline:none;">
+    </div>
+    <div style="margin-bottom:20px;">
+      <label style="font-size:12px;font-weight:700;color:var(--black);display:block;margin-bottom:6px;">이메일</label>
+      <input id="apply-email" type="email" placeholder="example@company.com" style="width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:8px;font-size:13px;outline:none;">
+    </div>
+    <button onclick="submitApply()" class="btn btn-green" style="width:100%;padding:13px;font-size:14px;font-weight:700;">신청 완료하기</button>
+    <div id="apply-error" style="color:#e53e3e;font-size:12px;text-align:center;margin-top:8px;display:none;"></div>
+  `;
+  document.getElementById('applyModal').classList.add('open');
+}
+
+async function submitApply() {
+  const company = document.getElementById('apply-company')?.value?.trim();
+  const name = document.getElementById('apply-name')?.value?.trim();
+  const email = document.getElementById('apply-email')?.value?.trim();
+  const errorEl = document.getElementById('apply-error');
+
+  if (!company || !name || !email) {
+    errorEl.textContent = '회사명, 성함, 이메일을 모두 입력해주세요.';
+    errorEl.style.display = 'block'; return;
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    errorEl.textContent = '올바른 이메일 형식을 입력해주세요.';
+    errorEl.style.display = 'block'; return;
+  }
+
+  const s = sessionCache.find(x => x.id === currentSessionId);
+  try {
+    // 1. 신청자 DB 저장
+    await supabaseFetch('registrations', {
+      method: 'POST',
+      body: JSON.stringify({ session_id: currentSessionId, session_title: s?.title||'', company_name: company, name, email })
+    });
+
+    renderUpcoming(sessionCache.filter(x => new Date(x.session_date) >= new Date()));
+
+    // 3. 구글 캘린더 추가 링크 생성
+    const calTitle = encodeURIComponent('[flex 세션] ' + (s?.title || ''));
+    const calStartRaw = new Date(s?.session_date || '');
+    const calStart = calStartRaw.toISOString().replace(/[-:]/g, '').replace('.000Z', 'Z');
+    const durationMin = parseInt((s?.duration || '60분').replace('분','')) || 60;
+    const calEndRaw = new Date(calStartRaw.getTime() + durationMin * 60000);
+    const calEnd = calEndRaw.toISOString().replace(/[-:]/g, '').replace('.000Z', 'Z');
+    const calDesc = encodeURIComponent('flex 세션 신청이 완료되었습니다.\n세션 참여 링크는 별도 이메일로 안내드립니다.');
+    const calUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${calTitle}&dates=${calStart}/${calEnd}&details=${calDesc}`;
+    const calBtnHtml = s?.time_tbd
+      ? `<p style="font-size:12px;color:var(--sub);margin-top:4px;">📅 일정이 확정되면 캘린더 추가 링크를 안내드립니다.</p>`
+      : `<a href="${calUrl}" target="_blank" style="display:inline-flex;align-items:center;gap:8px;padding:12px 20px;background:#fff;border:1.5px solid var(--border);border-radius:10px;font-size:13px;font-weight:600;color:var(--black);text-decoration:none;" onmouseover="this.style.borderColor='var(--green)'" onmouseout="this.style.borderColor='var(--border)'">
+          <span style="font-size:18px;">📅</span> 구글 캘린더에 일정 추가하기
+        </a>
+        <p style="font-size:11px;color:#aaa;margin-top:12px;">버튼을 클릭하면 구글 캘린더로 이동합니다</p>`;
+
+    document.getElementById('applyModalContent').innerHTML = `
+      <div style="text-align:center;padding:16px 0;">
+        <div style="font-size:48px;margin-bottom:16px;">🎉</div>
+        <h3 style="font-size:17px;font-weight:800;color:var(--black);margin-bottom:8px;">세션 신청이 완료되었습니다!</h3>
+        <p style="font-size:13px;color:var(--sub);line-height:1.7;margin-bottom:20px;">입력하신 이메일로 세션 참여 링크와<br>안내 메일을 보내드립니다.</p>
+        ${calBtnHtml}
+      </div>`;
+  } catch(e) {
+    errorEl.textContent = '신청 중 오류가 발생했습니다. 다시 시도해주세요.';
+    errorEl.style.display = 'block';
+  }
+}
+
+function closeApplyModal(e) {
+  if (e.target === document.getElementById('applyModal')) document.getElementById('applyModal').classList.remove('open');
+}
+
+// ── 지난 세션 모달 ──
+function openPastModal(sessionId) {
+  const s = sessionCache.find(x => x.id === sessionId);
+  if (!s) return;
+
+  const chaps = s.chapters ? s.chapters.map(c => `
+    <div style="padding:9px 0;border-bottom:1px solid var(--border);font-size:12px;color:#444;display:flex;gap:12px;align-items:center;">
+      <span style="color:var(--green);font-weight:700;flex-shrink:0;">▶</span>${c}
+    </div>`).join('') : '';
+
+  const videoArea = s.recording_url
+    ? `<iframe src="${s.recording_url}" style="width:100%;aspect-ratio:16/9;border:none;border-radius:12px;" allowfullscreen></iframe>`
+    : `<div style="background:#0d0d1a;border-radius:12px;aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;">
+        <div style="position:absolute;inset:0;background:linear-gradient(135deg,#0d0d1a,#0d2a18);"></div>
+        <div style="position:relative;z-index:1;text-align:center;">
+          <div style="width:56px;height:56px;background:rgba(44,226,122,.15);border:2px solid var(--green);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px;margin:0 auto 12px;">▶</div>
+          <div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:4px;">세션 녹화 영상</div>
+          <div style="font-size:11px;color:rgba(255,255,255,.4);">${s.duration||''} · ${formatDateShort(s.session_date)}</div>
+        </div>
+      </div>`;
+
+  document.getElementById('pastModalContent').innerHTML = `
+    <div style="background:var(--black);padding:24px 28px;">
+      <div style="font-size:11px;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">${s.tag||''} · ${formatDateShort(s.session_date)}</div>
+      <h3 style="font-size:17px;font-weight:800;color:#fff;letter-spacing:-.02em;margin-bottom:10px;line-height:1.4;">${s.title}</h3>
+      <div style="display:flex;gap:16px;flex-wrap:wrap;">
+        <span style="font-size:11px;color:rgba(255,255,255,.45);">⏱ ${s.duration||''}</span>
+      </div>
+    </div>
+    <div style="padding:24px 28px;display:flex;flex-direction:column;gap:20px;">
+      ${videoArea}
+      ${s.description ? `<div>
+        <div style="font-size:12px;font-weight:700;color:var(--black);margin-bottom:8px;">세션 소개</div>
+        <p style="font-size:13px;color:var(--sub);line-height:1.75;">${s.description}</p>
+      </div>` : ''}
+      ${chaps ? `<div>
+        <div style="font-size:12px;font-weight:700;color:var(--black);margin-bottom:4px;">챕터</div>
+        ${chaps}
+      </div>` : ''}
+    </div>`;
+  document.getElementById('pastModal').classList.add('open');
+}
+
+function closePastModal(e) {
+  if (e.target === document.getElementById('pastModal')) document.getElementById('pastModal').classList.remove('open');
+}
+
+// 초기 로드
+loadSessions();
+</script>
+</body>
+</html>
