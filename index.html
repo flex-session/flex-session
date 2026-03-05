@@ -418,7 +418,17 @@ async function submitApply() {
 
   const s = sessionCache.find(x => x.id === currentSessionId);
   try {
-    // 1. 신청자 DB 저장
+    // 1. 중복 신청 확인
+    const existing = await supabaseFetch(
+      `registrations?session_id=eq.${currentSessionId}&email=eq.${encodeURIComponent(email)}&select=id`
+    );
+    if (existing && existing.length > 0) {
+      errorEl.textContent = '이미 신청한 세션이에요.';
+      errorEl.style.display = 'block';
+      return;
+    }
+
+    // 2. 신청자 DB 저장
     await supabaseFetch('registrations', {
       method: 'POST',
       body: JSON.stringify({ session_id: currentSessionId, session_title: s?.title||'', company_name: company, name, email })
