@@ -206,8 +206,23 @@ async function loadSessions() {
     const data = await supabaseFetch('sessions?select=*&order=session_date.asc');
     sessionCache = data;
     const now = new Date();
-    const upcoming = data.filter(s => new Date(s.session_date) >= now);
-    const past = data.filter(s => new Date(s.session_date) < now);
+
+    // URL에 ?id= 파라미터가 있으면 해당 세션만 단독 표시
+    const urlParams = new URLSearchParams(window.location.search);
+    const privateId = urlParams.get('id');
+    if (privateId) {
+      const session = data.find(s => s.id === parseInt(privateId));
+      if (session) {
+        renderPrivateSession(session);
+        return;
+      }
+    }
+
+    // is_public = true인 세션만 필터링
+    const publicData = data.filter(s => s.is_public !== false);
+    const upcoming = publicData.filter(s => new Date(s.session_date) >= now);
+    const past = publicData.filter(s => new Date(s.session_date) < now);
+
     // 지난 세션 없으면 탭 숨기기
     const tabBar = document.getElementById('tab-bar');
     if (past.length === 0) {
@@ -242,7 +257,7 @@ function renderUpcoming(sessions) {
     const isFeatured = s.is_featured || i === 0;
     const border = isFeatured ? 'border:1.5px solid var(--green);box-shadow:0 4px 16px rgba(44,226,122,.1);' : 'border:1.5px solid var(--border);';
     const headerBg = isFeatured ? 'background:linear-gradient(120deg,#000000,#0a2a0a);' : 'background:#000000;';
-    const liveBg = isFeatured ? 'background:#09BB1B;color:#fff;' : 'background:#09BB1B;color:#fff;';
+    const liveBg = isFeatured ? 'background:var(--green);color:#fff;' : 'background:rgba(255,255,255,.1);color:rgba(255,255,255,.7);';
     const btnClass = isFeatured ? 'btn-green' : 'btn-primary';
     return `
       <div class="session-card" style="${border}">
@@ -292,6 +307,29 @@ function renderPast(sessions) {
       </div>
       <span style="font-size:18px;color:#ccc;flex-shrink:0;">›</span>
     </div>`).join('');
+}
+
+// ── Private 세션 단독 표시 ──
+function renderPrivateSession(s) {
+  // 탭, 필터 숨기기
+  document.getElementById('tab-bar').style.display = 'none';
+  document.getElementById('filter-upcoming').style.display = 'none';
+
+  const now = new Date();
+  const isPast = new Date(s.session_date) < now;
+
+  if (isPast) {
+    // 지난 세션이면 모달 바로 오픈
+    document.getElementById('panel-upcoming').style.display = 'none';
+    document.getElementById('panel-past').style.display = 'block';
+    document.getElementById('past-list').innerHTML = '';
+    openPastModal(s.id);
+  } else {
+    // 예정 세션이면 카드 단독 표시
+    document.getElementById('panel-past').style.display = 'none';
+    document.getElementById('panel-upcoming').style.display = 'block';
+    renderUpcoming([s]);
+  }
 }
 
 // ── 필터바 렌더링 ──
