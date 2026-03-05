@@ -218,10 +218,9 @@ async function loadSessions() {
       }
     }
 
-    // is_public = true인 세션만 필터링
-    const publicData = data.filter(s => s.is_public !== false);
-    const upcoming = publicData.filter(s => new Date(s.session_date) >= now);
-    const past = publicData.filter(s => new Date(s.session_date) < now);
+    // 예정 세션: is_public = true만 / 지난 세션: 전체 공개
+    const upcoming = data.filter(s => new Date(s.session_date) >= now && s.is_public !== false);
+    const past = data.filter(s => new Date(s.session_date) < now);
 
     // 지난 세션 없으면 탭 숨기기
     const tabBar = document.getElementById('tab-bar');
