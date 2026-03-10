@@ -434,7 +434,14 @@ async function submitApply() {
       body: JSON.stringify({ session_id: currentSessionId, session_title: s?.title||'', company_name: company, name, email })
     });
 
-    renderUpcoming(sessionCache.filter(x => new Date(x.session_date) >= new Date()));
+    // private 링크 접속이면 해당 세션만 유지, 아니면 전체 공개 세션 표시
+    const urlParams = new URLSearchParams(window.location.search);
+    const privateId = urlParams.get('id');
+    if (privateId) {
+      renderUpcoming([s]);
+    } else {
+      renderUpcoming(sessionCache.filter(x => new Date(x.session_date) >= new Date() && x.is_public !== false));
+    }
 
     // 3. 구글 캘린더 추가 링크 생성
     const calTitle = encodeURIComponent('[flex 세션] ' + (s?.title || ''));
